@@ -68,17 +68,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [positions, setPositions] = useState<Position[]>([]);
   const [transactions, setTransactions] = useState<TxRecord[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("yieldarc-theme") as "light" | "dark" | null;
     if (saved) setTheme(saved);
     else if (window.matchMedia("(prefers-color-scheme: dark)").matches) setTheme("dark");
+
+    try {
+      const session = localStorage.getItem("yieldarc-session");
+      if (session) {
+        const { address: a, wallet: w } = JSON.parse(session) as { address: string; wallet: WalletKind };
+        if (a) {
+          setAddress(a);
+          setWallet(w);
+          const posRaw = localStorage.getItem(`yieldarc-positions:${a}`);
+          const txRaw = localStorage.getItem(`yieldarc-transactions:${a}`);
+          if (posRaw) setPositions(JSON.parse(posRaw));
+          if (txRaw) setTransactions(JSON.parse(txRaw));
+        }
+      }
+    } catch {}
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
     localStorage.setItem("yieldarc-theme", theme);
   }, [theme]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (address) {
+      localStorage.setItem(`yieldarc-positions:${address}`, JSON.stringify(positions));
+    }
+  }, [hydrated, address, positions]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (address) {
+      localStorage.setItem(`yieldarc-transactions:${address}`, JSON.stringify(transactions));
+    }
+  }, [hydrated, address, transactions]);
 
   const connect = useCallback((w: WalletKind) => {
     setWallet(w);
