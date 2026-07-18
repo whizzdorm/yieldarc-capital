@@ -1,8 +1,29 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 
-type WalletKind = "MetaMask" | "WalletConnect" | "Coinbase Wallet" | "Rabby Wallet";
+type WalletKind =
+  | "MetaMask"
+  | "WalletConnect"
+  | "Coinbase Wallet"
+  | "Rabby Wallet"
+  | "Trust Wallet"
+  | "Rainbow"
+  | "Ledger Live"
+  | "OKX Wallet"
+  | "Phantom";
 
 type Position = { vaultId: string; deposited: number; yieldEarned: number };
+
+export type TxRecord = {
+  id: string;
+  type: "deposit" | "withdraw";
+  method: "wallet" | "address" | "card";
+  asset: string;
+  amount: number;
+  vaultId?: string;
+  txHash: string;
+  status: "pending" | "confirmed" | "failed";
+  createdAt: number;
+};
 
 type AppState = {
   address: string | null;
@@ -11,28 +32,42 @@ type AppState = {
   disconnect: () => void;
   modalOpen: boolean;
   setModalOpen: (v: boolean) => void;
+  depositOpen: boolean;
+  setDepositOpen: (v: boolean) => void;
+  depositVaultId: string | null;
+  openDeposit: (vaultId?: string) => void;
   theme: "light" | "dark";
   toggleTheme: () => void;
   positions: Position[];
-  deposit: (vaultId: string, amount: number) => void;
+  deposit: (vaultId: string, amount: number, method: TxRecord["method"], asset: string) => TxRecord;
   withdraw: (vaultId: string) => void;
+  transactions: TxRecord[];
 };
 
 const AppCtx = createContext<AppState | null>(null);
 
-function randomAddress() {
+function randomHex(len: number) {
   const hex = "0123456789abcdef";
-  let s = "0x";
-  for (let i = 0; i < 40; i++) s += hex[Math.floor(Math.random() * 16)];
+  let s = "";
+  for (let i = 0; i < len; i++) s += hex[Math.floor(Math.random() * 16)];
   return s;
+}
+function randomAddress() {
+  return "0x" + randomHex(40);
+}
+function randomTxHash() {
+  return "0x" + randomHex(64);
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
   const [wallet, setWallet] = useState<WalletKind | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
+  const [depositOpen, setDepositOpen] = useState(false);
+  const [depositVaultId, setDepositVaultId] = useState<string | null>(null);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [positions, setPositions] = useState<Position[]>([]);
+  const [transactions, setTransactions] = useState<TxRecord[]>([]);
 
   useEffect(() => {
     const saved = localStorage.getItem("yieldarc-theme") as "light" | "dark" | null;
@@ -55,22 +90,58 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setWallet(null);
     setAddress(null);
     setPositions([]);
+    setTransactions([]);
   }, []);
 
-  const deposit = useCallback((vaultId: string, amount: number) => {
-    setPositions((prev) => {
-      const existing = prev.find((p) => p.vaultId === vaultId);
-      if (existing) {
-        return prev.map((p) =>
-          p.vaultId === vaultId ? { ...p, deposited: p.deposited + amount } : p,
-        );
-      }
-      return [...prev, { vaultId, deposited: amount, yieldEarned: 0 }];
-    });
+  const openDeposit = useCallback((vaultId?: string) => {
+    setDepositVaultId(vaultId ?? null);
+    setDepositOpen(true);
   }, []);
+
+  const deposit = useCallback(
+    (vaultId: string, amount: number, method: TxRecord["method"], asset: string) => {
+      setPositions((prev) => {
+        const existing = prev.find((p) => p.vaultId === vaultId);
+        if (existing) {
+          return prev.map((p) =>
+            p.vaultId === vaultId ? { ...p, deposited: p.deposited + amount } : p,
+          );
+        }
+        return [...prev, { vaultId, deposited: amount, yieldEarned: 0 }];
+      });
+      const tx: TxRecord = {
+        id: crypto.randomUUID(),
+        type: "deposit",
+        method,
+        asset,
+        amount,
+        vaultId,
+        txHash: randomTxHash(),
+        status: "confirmed",
+        createdAt: Date.now(),
+      };
+      setTransactions((prev) => [tx, ...prev]);
+      return tx;
+    },
+    [],
+  );
 
   const withdraw = useCallback((vaultId: string) => {
     setPositions((prev) => prev.filter((p) => p.vaultId !== vaultId));
+    setTransactions((prev) => [
+      {
+        id: crypto.randomUUID(),
+        type: "withdraw",
+        method: "wallet",
+        asset: "",
+        amount: 0,
+        vaultId,
+        txHash: randomTxHash(),
+        status: "confirmed",
+        createdAt: Date.now(),
+      },
+      ...prev,
+    ]);
   }, []);
 
   const toggleTheme = useCallback(() => {
@@ -79,10 +150,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AppState>(
     () => ({
-      address, wallet, connect, disconnect, modalOpen, setModalOpen,
-      theme, toggleTheme, positions, deposit, withdraw,
+      address, wallet, connect, disconnect,
+      modalOpen, setModalOpen,
+      depositOpen, setDepositOpen, depositVaultId, openDeposit,
+      theme, toggleTheme, positions, deposit, withdraw, transactions,
     }),
-    [address, wallet, connect, disconnect, modalOpen, theme, toggleTheme, positions, deposit, withdraw],
+    [address, wallet, connect, disconnect, modalOpen, depositOpen, depositVaultId, openDeposit,
+     theme, toggleTheme, positions, deposit, withdraw, transactions],
   );
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
@@ -100,4 +174,8 @@ export function truncateAddress(a: string) {
 
 export function formatUSD(n: number, decimals = 2) {
   return `$${n.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
+}
+
+export function generateDepositAddress() {
+  return randomAddress();
 }
