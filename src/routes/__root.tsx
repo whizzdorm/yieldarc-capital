@@ -1,4 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { WagmiProvider } from "wagmi";
+import { wagmiConfig } from "@/lib/wagmi-config";
 import {
   Outlet,
   Link,
@@ -104,13 +106,15 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AppProvider>
-        <Outlet />
-        <ConnectWalletModal />
-        <DepositModal />
-        <Toaster />
-      </AppProvider>
-    </QueryClientProvider>
+    <WagmiProvider config={wagmiConfig}>
+      <QueryClientProvider client={queryClient}>
+        <AppProvider>
+          <Outlet />
+          <ConnectWalletModal />
+          <DepositModal />
+          <Toaster />
+        </AppProvider>
+      </QueryClientProvider>
+    </WagmiProvider>
   );
 }
