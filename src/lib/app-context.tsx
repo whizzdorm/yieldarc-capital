@@ -68,11 +68,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [positions, setPositions] = useState<Position[]>([]);
   const [transactions, setTransactions] = useState<TxRecord[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("yieldarc-theme") as "light" | "dark" | null;
     if (saved) setTheme(saved);
     else if (window.matchMedia("(prefers-color-scheme: dark)").matches) setTheme("dark");
+
+    try {
+      const session = localStorage.getItem("yieldarc-session");
+      if (session) {
+        const { address: a, wallet: w } = JSON.parse(session) as { address: string; wallet: WalletKind };
+        if (a) {
+          setAddress(a);
+          setWallet(w);
+          const posRaw = localStorage.getItem(`yieldarc-positions:${a}`);
+          const txRaw = localStorage.getItem(`yieldarc-transactions:${a}`);
+          if (posRaw) setPositions(JSON.parse(posRaw));
+          if (txRaw) setTransactions(JSON.parse(txRaw));
+        }
+      }
+    } catch {}
+    setHydrated(true);
   }, []);
 
   useEffect(() => {
@@ -80,10 +97,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
     localStorage.setItem("yieldarc-theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    if (!hydrated) return;
+    if (address) {
+      localStorage.setItem(`yieldarc-positions:${address}`, JSON.stringify(positions));
+    }
+  }, [hydrated, address, positions]);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (address) {
+      localStorage.setItem(`yieldarc-transactions:${address}`, JSON.stringify(transactions));
+    }
+  }, [hydrated, address, transactions]);
+
   const connect = useCallback((w: WalletKind) => {
+    const a = randomAddress();
     setWallet(w);
-    setAddress(randomAddress());
+    setAddress(a);
     setModalOpen(false);
+    try {
+      localStorage.setItem("yieldarc-session", JSON.stringify({ address: a, wallet: w }));
+      const posRaw = localStorage.getItem(`yieldarc-positions:${a}`);
+      const txRaw = localStorage.getItem(`yieldarc-transactions:${a}`);
+      setPositions(posRaw ? JSON.parse(posRaw) : []);
+      setTransactions(txRaw ? JSON.parse(txRaw) : []);
+    } catch {}
   }, []);
 
   const disconnect = useCallback(() => {
@@ -91,6 +130,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAddress(null);
     setPositions([]);
     setTransactions([]);
+    try { localStorage.removeItem("yieldarc-session"); } catch {}
   }, []);
 
   const openDeposit = useCallback((vaultId?: string) => {
