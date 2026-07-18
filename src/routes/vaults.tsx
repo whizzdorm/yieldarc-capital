@@ -80,7 +80,7 @@ function VaultsPage() {
 }
 
 function VaultCard({ v }: { v: Vault }) {
-  const { positions } = useApp();
+  const { positions, openDeposit } = useApp();
   const pos = positions.find((p) => p.vaultId === v.id);
   const riskColor =
     v.risk === "Low Risk" ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" :
@@ -117,9 +117,15 @@ function VaultCard({ v }: { v: Vault }) {
         <span className="font-medium">{formatUSD(pos?.deposited ?? 0)}</span>
       </div>
 
-      <Button asChild className="mt-5 w-full bg-teal text-teal-foreground hover:bg-teal/90">
-        <Link to="/vault/$id" params={{ id: v.id }}>Deposit</Link>
-      </Button>
+      <div className="mt-5 grid grid-cols-2 gap-2">
+        <Button onClick={() => openDeposit(v.id)} className="bg-teal text-teal-foreground hover:bg-teal/90">
+          Deposit
+        </Button>
+        <Button asChild variant="outline">
+          <Link to="/vault/$id" params={{ id: v.id }}>Details</Link>
+        </Button>
+      </div>
     </div>
   );
 }
+

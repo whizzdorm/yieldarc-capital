@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppProvider } from "@/lib/app-context";
 import { ConnectWalletModal } from "@/components/wallet/ConnectWalletModal";
+import { DepositModal } from "@/components/wallet/DepositModal";
 import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
@@ -107,6 +108,7 @@ function RootComponent() {
       <AppProvider>
         <Outlet />
         <ConnectWalletModal />
+        <DepositModal />
         <Toaster />
       </AppProvider>
     </QueryClientProvider>

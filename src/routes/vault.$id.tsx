@@ -38,7 +38,7 @@ export const Route = createFileRoute("/vault/$id")({
 function VaultDetail() {
   const { id } = useParams({ from: "/vault/$id" });
   const v = findVault(id)!;
-  const { address, setModalOpen, positions, deposit, withdraw } = useApp();
+  const { address, setModalOpen, positions, deposit, withdraw, openDeposit } = useApp();
   const pos = positions.find((p) => p.vaultId === v.id);
   const [amount, setAmount] = useState("");
   const [approved, setApproved] = useState(false);
@@ -64,7 +64,7 @@ function VaultDetail() {
     setDepositing(true);
     toast.info("Deposit transaction sent. Please confirm in your wallet.");
     setTimeout(() => {
-      deposit(v.id, numeric);
+      deposit(v.id, numeric, "wallet", v.asset);
       setDepositing(false);
       setAmount("");
       setApproved(false);
