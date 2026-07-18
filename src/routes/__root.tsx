@@ -108,6 +108,7 @@ function RootComponent() {
       <AppProvider>
         <Outlet />
         <ConnectWalletModal />
+        <DepositModal />
         <Toaster />
       </AppProvider>
     </QueryClientProvider>
