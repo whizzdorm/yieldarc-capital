@@ -3,11 +3,18 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { truncateAddress, useApp } from "@/lib/app-context";
 import { Copy, ExternalLink, LogOut, Plus, Wallet } from "lucide-react";
 import { toast } from "sonner";
+import { useEffect, useState } from "react";
 
 export function WalletButton() {
   const { address, wallet, setModalOpen, disconnect, openDeposit } = useApp();
 
-  if (!address) {
+  // wagmi's connection state is only known client-side; rendering it
+  // during SSR would produce a "connected" flash mismatch on refresh, so
+  // wait for the client mount before showing anything wallet-dependent.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!mounted || !address) {
     return (
       <Button onClick={() => setModalOpen(true)} className="bg-teal text-teal-foreground hover:bg-teal/90">
         <Wallet className="mr-2 h-4 w-4" /> Connect Wallet
