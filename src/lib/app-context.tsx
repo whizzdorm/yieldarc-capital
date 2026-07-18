@@ -112,9 +112,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [hydrated, address, transactions]);
 
   const connect = useCallback((w: WalletKind) => {
+    const a = randomAddress();
     setWallet(w);
-    setAddress(randomAddress());
+    setAddress(a);
     setModalOpen(false);
+    try {
+      localStorage.setItem("yieldarc-session", JSON.stringify({ address: a, wallet: w }));
+      const posRaw = localStorage.getItem(`yieldarc-positions:${a}`);
+      const txRaw = localStorage.getItem(`yieldarc-transactions:${a}`);
+      setPositions(posRaw ? JSON.parse(posRaw) : []);
+      setTransactions(txRaw ? JSON.parse(txRaw) : []);
+    } catch {}
   }, []);
 
   const disconnect = useCallback(() => {
@@ -122,6 +130,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setAddress(null);
     setPositions([]);
     setTransactions([]);
+    try { localStorage.removeItem("yieldarc-session"); } catch {}
   }, []);
 
   const openDeposit = useCallback((vaultId?: string) => {
