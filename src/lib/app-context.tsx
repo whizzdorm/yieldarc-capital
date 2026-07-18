@@ -1,15 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
-
-type WalletKind =
-  | "MetaMask"
-  | "WalletConnect"
-  | "Coinbase Wallet"
-  | "Rabby Wallet"
-  | "Trust Wallet"
-  | "Rainbow"
-  | "Ledger Live"
-  | "OKX Wallet"
-  | "Phantom";
+import { useAccount, useDisconnect } from "wagmi";
+import { CONNECTOR_DISPLAY } from "@/lib/wagmi-config";
 
 type Position = { vaultId: string; deposited: number; yieldEarned: number };
 
@@ -27,8 +18,7 @@ export type TxRecord = {
 
 type AppState = {
   address: string | null;
-  wallet: WalletKind | null;
-  connect: (w: WalletKind) => void;
+  wallet: string | null;
   disconnect: () => void;
   modalOpen: boolean;
   setModalOpen: (v: boolean) => void;
@@ -46,22 +36,26 @@ type AppState = {
 
 const AppCtx = createContext<AppState | null>(null);
 
+// Still used for fake tx hashes on the (still-simulated) deposit/withdraw
+// bookkeeping below — unrelated to wallet *connection*, which is now real.
 function randomHex(len: number) {
   const hex = "0123456789abcdef";
   let s = "";
   for (let i = 0; i < len; i++) s += hex[Math.floor(Math.random() * 16)];
   return s;
 }
-function randomAddress() {
-  return "0x" + randomHex(40);
-}
 function randomTxHash() {
   return "0x" + randomHex(64);
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const [address, setAddress] = useState<string | null>(null);
-  const [wallet, setWallet] = useState<WalletKind | null>(null);
+  // Real wallet state now comes from wagmi, not from generated fake values.
+  const { address: wagmiAddress, connector, isConnected } = useAccount();
+  const { disconnect: wagmiDisconnect } = useDisconnect();
+
+  const address = isConnected ? wagmiAddress ?? null : null;
+  const wallet = isConnected && connector ? CONNECTOR_DISPLAY[connector.uid]?.name ?? connector.name : null;
+
   const [modalOpen, setModalOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);
   const [depositVaultId, setDepositVaultId] = useState<string | null>(null);
@@ -74,23 +68,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const saved = localStorage.getItem("yieldarc-theme") as "light" | "dark" | null;
     if (saved) setTheme(saved);
     else if (window.matchMedia("(prefers-color-scheme: dark)").matches) setTheme("dark");
-
-    try {
-      const session = localStorage.getItem("yieldarc-session");
-      if (session) {
-        const { address: a, wallet: w } = JSON.parse(session) as { address: string; wallet: WalletKind };
-        if (a) {
-          setAddress(a);
-          setWallet(w);
-          const posRaw = localStorage.getItem(`yieldarc-positions:${a}`);
-          const txRaw = localStorage.getItem(`yieldarc-transactions:${a}`);
-          if (posRaw) setPositions(JSON.parse(posRaw));
-          if (txRaw) setTransactions(JSON.parse(txRaw));
-        }
-      }
-    } catch {}
     setHydrated(true);
   }, []);
+
+  // Load this address's positions/transactions whenever the connected
+  // wallet changes (including on reconnect after a page refresh).
+  useEffect(() => {
+    if (!address) {
+      setPositions([]);
+      setTransactions([]);
+      return;
+    }
+    try {
+      const posRaw = localStorage.getItem(`yieldarc-positions:${address}`);
+      const txRaw = localStorage.getItem(`yieldarc-transactions:${address}`);
+      setPositions(posRaw ? JSON.parse(posRaw) : []);
+      setTransactions(txRaw ? JSON.parse(txRaw) : []);
+    } catch {
+      setPositions([]);
+      setTransactions([]);
+    }
+  }, [address]);
+
+  useEffect(() => {
+    if (modalOpen && isConnected) setModalOpen(false);
+  }, [modalOpen, isConnected]);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -111,27 +113,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [hydrated, address, transactions]);
 
-  const connect = useCallback((w: WalletKind) => {
-    const a = randomAddress();
-    setWallet(w);
-    setAddress(a);
-    setModalOpen(false);
-    try {
-      localStorage.setItem("yieldarc-session", JSON.stringify({ address: a, wallet: w }));
-      const posRaw = localStorage.getItem(`yieldarc-positions:${a}`);
-      const txRaw = localStorage.getItem(`yieldarc-transactions:${a}`);
-      setPositions(posRaw ? JSON.parse(posRaw) : []);
-      setTransactions(txRaw ? JSON.parse(txRaw) : []);
-    } catch {}
-  }, []);
-
   const disconnect = useCallback(() => {
-    setWallet(null);
-    setAddress(null);
-    setPositions([]);
-    setTransactions([]);
-    try { localStorage.removeItem("yieldarc-session"); } catch {}
-  }, []);
+    wagmiDisconnect();
+  }, [wagmiDisconnect]);
 
   const openDeposit = useCallback((vaultId?: string) => {
     setDepositVaultId(vaultId ?? null);
@@ -190,12 +174,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AppState>(
     () => ({
-      address, wallet, connect, disconnect,
+      address, wallet, disconnect,
       modalOpen, setModalOpen,
       depositOpen, setDepositOpen, depositVaultId, openDeposit,
       theme, toggleTheme, positions, deposit, withdraw, transactions,
     }),
-    [address, wallet, connect, disconnect, modalOpen, depositOpen, depositVaultId, openDeposit,
+    [address, wallet, disconnect, modalOpen, depositOpen, depositVaultId, openDeposit,
      theme, toggleTheme, positions, deposit, withdraw, transactions],
   );
 
@@ -216,6 +200,11 @@ export function formatUSD(n: number, decimals = 2) {
   return `$${n.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })}`;
 }
 
+// ⚠️ STILL SIMULATED — see chat: this generates a random string, not an
+// address anyone controls. Do not let users send real funds to it.
 export function generateDepositAddress() {
-  return randomAddress();
+  const hex = "0123456789abcdef";
+  let s = "";
+  for (let i = 0; i < 40; i++) s += hex[Math.floor(Math.random() * 16)];
+  return "0x" + s;
 }
