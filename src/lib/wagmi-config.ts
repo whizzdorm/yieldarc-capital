@@ -49,18 +49,20 @@ export const phantomConnector = injected({
   }),
 });
 
-// Maps each connector's unique instance id -> the exact label/icon your
-// ConnectWalletModal already used, so the visual design doesn't change.
-export const CONNECTOR_DISPLAY: Record<string, { name: string; color: string; icon: string }> = {
-  [metaMaskConnector.uid]: { name: "MetaMask", color: "bg-orange-100 text-orange-600 dark:bg-orange-950 dark:text-orange-300", icon: "🦊" },
-  [walletConnectConnector.uid]: { name: "WalletConnect", color: "bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-300", icon: "🔵" },
-  [coinbaseConnector.uid]: { name: "Coinbase Wallet", color: "bg-sky-100 text-sky-600 dark:bg-sky-950 dark:text-sky-300", icon: "🔷" },
-  [rabbyConnector.uid]: { name: "Rabby Wallet", color: "bg-purple-100 text-purple-600 dark:bg-purple-950 dark:text-purple-300", icon: "🟣" },
-  [trustConnector.uid]: { name: "Trust Wallet", color: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300", icon: "🟠" },
-  [rainbowConnector.uid]: { name: "Rainbow", color: "bg-pink-100 text-pink-600 dark:bg-pink-950 dark:text-pink-300", icon: "🌈" },
-  [ledgerLiveConnector.uid]: { name: "Ledger Live", color: "bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-300", icon: "🟢" },
-  [okxConnector.uid]: { name: "OKX Wallet", color: "bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200", icon: "⚫" },
-  [phantomConnector.uid]: { name: "Phantom", color: "bg-violet-100 text-violet-600 dark:bg-violet-950 dark:text-violet-300", icon: "👻" },
+// Maps each connector's unique instance id -> display name + iconId. The
+// iconId is resolved to a real wallet logo component in ConnectWalletModal
+// (via @web3icons/react) — kept as a plain string here so this file has no
+// JSX and can stay a .ts file.
+export const CONNECTOR_DISPLAY: Record<string, { name: string; color: string; iconId: string }> = {
+  [metaMaskConnector.uid]: { name: "MetaMask", color: "bg-orange-100 dark:bg-orange-950", iconId: "metamask" },
+  [walletConnectConnector.uid]: { name: "WalletConnect", color: "bg-blue-100 dark:bg-blue-950", iconId: "walletconnect" },
+  [coinbaseConnector.uid]: { name: "Coinbase Wallet", color: "bg-sky-100 dark:bg-sky-950", iconId: "coinbase" },
+  [rabbyConnector.uid]: { name: "Rabby Wallet", color: "bg-purple-100 dark:bg-purple-950", iconId: "rabby" },
+  [trustConnector.uid]: { name: "Trust Wallet", color: "bg-blue-100 dark:bg-blue-950", iconId: "trust" },
+  [rainbowConnector.uid]: { name: "Rainbow", color: "bg-pink-100 dark:bg-pink-950", iconId: "rainbow" },
+  [ledgerLiveConnector.uid]: { name: "Ledger Live", color: "bg-emerald-100 dark:bg-emerald-950", iconId: "ledger" },
+  [okxConnector.uid]: { name: "OKX Wallet", color: "bg-zinc-100 dark:bg-zinc-800", iconId: "okx" },
+  [phantomConnector.uid]: { name: "Phantom", color: "bg-violet-100 dark:bg-violet-950", iconId: "phantom" },
 };
 
 export const wagmiConfig = createConfig({
