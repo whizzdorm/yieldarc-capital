@@ -8,13 +8,15 @@ import { vaults } from "@/lib/vaults";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, Copy, Loader2, CreditCard, Wallet, QrCode } from "lucide-react";
+import { Check, Copy, Loader2, CreditCard, Wallet, QrCode, RefreshCw } from "lucide-react";
+import { useTokenBalances, type BalanceAsset } from "@/lib/token-balances";
 
 const ASSETS = ["USDC", "ETH", "DAI", "USDT", "WBTC"] as const;
 type Asset = (typeof ASSETS)[number];
 
 export function DepositModal() {
   const { depositOpen, setDepositOpen, depositVaultId, address, setModalOpen, deposit } = useApp();
+  const { balances, isLoading: balLoading, refetch: refetchBalances } = useTokenBalances();
 
   // Default asset from selected vault, if any
   const defaultAsset = useMemo<Asset>(() => {
@@ -67,10 +69,14 @@ export function DepositModal() {
     return depositVaultId ?? vaults.find((v) => v.asset === asset)?.id ?? vaults[0].id;
   }
 
+  const currentBal = balances[asset as BalanceAsset];
+  const balanceFormatted = currentBal ? parseFloat(currentBal.formatted) : 0;
+
   async function handleWalletDeposit() {
     if (!requireWallet()) return;
     const n = parseFloat(amount);
     if (!n || n <= 0) return toast.error("Enter an amount");
+    if (n > balanceFormatted) return toast.error(`Insufficient ${asset} balance`);
     setWalletLoading(true);
     await new Promise((r) => setTimeout(r, 1200));
     deposit(targetVaultId(), n, "wallet", asset);
@@ -144,6 +150,21 @@ export function DepositModal() {
 
           {/* WALLET */}
           <TabsContent value="wallet" className="space-y-4 pt-4">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Available on Arbitrum</span>
+              <button
+                onClick={() => refetchBalances()}
+                className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                title="Refresh balance"
+              >
+                <RefreshCw className={`h-3 w-3 ${balLoading ? "animate-spin" : ""}`} />
+                {address
+                  ? balLoading && !currentBal
+                    ? "Loading…"
+                    : `${balanceFormatted.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${asset}`
+                  : "Connect wallet"}
+              </button>
+            </div>
             <div className="rounded-lg border border-border bg-background p-3">
               <div className="flex items-center gap-2">
                 <Input
@@ -153,7 +174,13 @@ export function DepositModal() {
                   onChange={(e) => setAmount(e.target.value)}
                   className="border-0 bg-transparent p-0 text-lg font-semibold shadow-none focus-visible:ring-0"
                 />
-                <button onClick={() => setAmount("1000")} className="rounded-md bg-teal/10 px-2 py-1 text-xs font-semibold text-teal hover:bg-teal/20">MAX</button>
+                <button
+                  onClick={() => setAmount(String(balanceFormatted))}
+                  disabled={!address || balanceFormatted <= 0}
+                  className="rounded-md bg-teal/10 px-2 py-1 text-xs font-semibold text-teal hover:bg-teal/20 disabled:opacity-50"
+                >
+                  MAX
+                </button>
                 <span className="rounded-md bg-muted px-2 py-1 text-sm font-medium">{asset}</span>
               </div>
             </div>
@@ -162,6 +189,7 @@ export function DepositModal() {
               {walletLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing…</> : `Deposit ${asset}`}
             </Button>
           </TabsContent>
+
 
           {/* ADDRESS */}
           <TabsContent value="address" className="space-y-4 pt-4">

@@ -43,9 +43,9 @@ export function ConnectWalletModal() {
         </DialogHeader>
         <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
           {connectors.map((c) => {
-            const meta = CONNECTOR_DISPLAY[c.uid] ?? { name: c.name, color: "bg-muted", iconId: "" };
+            const meta = CONNECTOR_DISPLAY[c.id] ?? { name: c.name, color: "bg-muted", iconId: "" };
             const Icon = WALLET_ICONS[meta.iconId];
-            const isConnectingThis = isPending && variables?.connector?.uid === c.uid;
+            const isConnectingThis = isPending && variables?.connector && "id" in variables.connector && variables.connector.id === c.id;
 
             return (
               <button
@@ -55,7 +55,7 @@ export function ConnectWalletModal() {
                   connect(
                     { connector: c },
                     {
-                      onError: (err) => {
+                      onError: (err: Error) => {
                         toast.error(err.message || `Couldn't connect ${meta.name}`);
                       },
                       onSuccess: () => {
