@@ -8,13 +8,15 @@ import { vaults } from "@/lib/vaults";
 import { QRCodeSVG } from "qrcode.react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Check, Copy, Loader2, CreditCard, Wallet, QrCode } from "lucide-react";
+import { Check, Copy, Loader2, CreditCard, Wallet, QrCode, RefreshCw } from "lucide-react";
+import { useTokenBalances, type BalanceAsset } from "@/lib/token-balances";
 
 const ASSETS = ["USDC", "ETH", "DAI", "USDT", "WBTC"] as const;
 type Asset = (typeof ASSETS)[number];
 
 export function DepositModal() {
   const { depositOpen, setDepositOpen, depositVaultId, address, setModalOpen, deposit } = useApp();
+  const { balances, isLoading: balLoading, refetch: refetchBalances } = useTokenBalances();
 
   // Default asset from selected vault, if any
   const defaultAsset = useMemo<Asset>(() => {
@@ -67,10 +69,14 @@ export function DepositModal() {
     return depositVaultId ?? vaults.find((v) => v.asset === asset)?.id ?? vaults[0].id;
   }
 
+  const currentBal = balances[asset as BalanceAsset];
+  const balanceFormatted = currentBal ? parseFloat(currentBal.formatted) : 0;
+
   async function handleWalletDeposit() {
     if (!requireWallet()) return;
     const n = parseFloat(amount);
     if (!n || n <= 0) return toast.error("Enter an amount");
+    if (n > balanceFormatted) return toast.error(`Insufficient ${asset} balance`);
     setWalletLoading(true);
     await new Promise((r) => setTimeout(r, 1200));
     deposit(targetVaultId(), n, "wallet", asset);
