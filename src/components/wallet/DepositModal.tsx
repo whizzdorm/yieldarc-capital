@@ -150,6 +150,21 @@ export function DepositModal() {
 
           {/* WALLET */}
           <TabsContent value="wallet" className="space-y-4 pt-4">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground">Available on Arbitrum</span>
+              <button
+                onClick={() => refetchBalances()}
+                className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                title="Refresh balance"
+              >
+                <RefreshCw className={`h-3 w-3 ${balLoading ? "animate-spin" : ""}`} />
+                {address
+                  ? balLoading && !currentBal
+                    ? "Loading…"
+                    : `${balanceFormatted.toLocaleString(undefined, { maximumFractionDigits: 6 })} ${asset}`
+                  : "Connect wallet"}
+              </button>
+            </div>
             <div className="rounded-lg border border-border bg-background p-3">
               <div className="flex items-center gap-2">
                 <Input
@@ -159,7 +174,13 @@ export function DepositModal() {
                   onChange={(e) => setAmount(e.target.value)}
                   className="border-0 bg-transparent p-0 text-lg font-semibold shadow-none focus-visible:ring-0"
                 />
-                <button onClick={() => setAmount("1000")} className="rounded-md bg-teal/10 px-2 py-1 text-xs font-semibold text-teal hover:bg-teal/20">MAX</button>
+                <button
+                  onClick={() => setAmount(String(balanceFormatted))}
+                  disabled={!address || balanceFormatted <= 0}
+                  className="rounded-md bg-teal/10 px-2 py-1 text-xs font-semibold text-teal hover:bg-teal/20 disabled:opacity-50"
+                >
+                  MAX
+                </button>
                 <span className="rounded-md bg-muted px-2 py-1 text-sm font-medium">{asset}</span>
               </div>
             </div>
@@ -168,6 +189,7 @@ export function DepositModal() {
               {walletLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing…</> : `Deposit ${asset}`}
             </Button>
           </TabsContent>
+
 
           {/* ADDRESS */}
           <TabsContent value="address" className="space-y-4 pt-4">
