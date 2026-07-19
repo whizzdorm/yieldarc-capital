@@ -54,7 +54,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const { disconnect: wagmiDisconnect } = useDisconnect();
 
   const address = isConnected ? wagmiAddress ?? null : null;
-  const wallet = isConnected && connector ? CONNECTOR_DISPLAY[connector.uid]?.name ?? connector.name : null;
+  const wallet = isConnected && connector ? CONNECTOR_DISPLAY[connector.id]?.name ?? connector.name : null;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [depositOpen, setDepositOpen] = useState(false);

@@ -35,7 +35,7 @@ export function useTokenBalances() {
 
   const balances: Record<BalanceAsset, { formatted: string; value: bigint; decimals: number } | null> = {
     ETH: ethQ.data
-      ? { formatted: ethQ.data.formatted, value: ethQ.data.value, decimals: ethQ.data.decimals }
+      ? { formatted: formatUnits(ethQ.data.value, ethQ.data.decimals), value: ethQ.data.value, decimals: ethQ.data.decimals }
       : null,
     USDC: null, DAI: null, USDT: null, WBTC: null,
   };
